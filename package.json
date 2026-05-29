@@ -1,0 +1,40 @@
+{
+  "name": "@harms-haus/pi-serper-search",
+  "version": "1.0.0",
+  "description": "Web search extension for the pi coding agent using Serper's Google Search API",
+  "type": "module",
+  "main": "src/index.ts",
+  "files": ["src/**/*.ts", "!src/__tests__/**", "README.md", "LICENSE"],
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=22.0.0" },
+  "author": "harms-haus",
+  "keywords": ["pi-package"],
+  "pi": { "extensions": ["./src/index.ts"] },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "lint:fix": "eslint --fix src/",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/"
+  },
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^4.1.6",
+    "eslint": "^10.4.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.3",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.3",
+    "vitest": "^4.1.6"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  }
+}

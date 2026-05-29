@@ -1,4 +1,12 @@
 import { Type } from "typebox";
+import type { Static } from "typebox";
+import { defineTool } from "@earendil-works/pi-coding-agent";
+import type {
+  AgentToolResult,
+  AgentToolUpdateCallback,
+  ExtensionContext,
+  ToolDefinition,
+} from "@earendil-works/pi-coding-agent";
 import { PageCache } from "./pagination.js";
 import { fetchSerperPage } from "./serper-client.js";
 import { formatResults } from "./format-results.js";
@@ -10,7 +18,7 @@ const PROMPT_GUIDELINES = [
   "Use web_search when you need to find information online, look up documentation, or verify facts.",
   "Use the 'results' parameter to control how many results to return (default 10, max 50).",
   "Use the 'start' parameter for pagination to get results beyond the first page (0-based offset).",
-] as const;
+];
 
 const PARAMETERS = Type.Object({
   q: Type.String({ description: "Search query string" }),
@@ -32,32 +40,14 @@ const PARAMETERS = Type.Object({
   ),
 });
 
-type ToolParams = { q: string; results?: number; start?: number };
-
-interface WebSearchToolDefinition {
-  name: "web_search";
-  label: string;
-  description: string;
-  promptSnippet: string;
-  promptGuidelines: readonly [string, string, string];
-  parameters: typeof PARAMETERS;
-  execute: (
-    toolCallId: string,
-    params: ToolParams,
-    signal: AbortSignal | undefined,
-    onUpdate: unknown,
-    ctx: unknown,
-  ) => Promise<{
-    content: [{ type: "text"; text: string }];
-    details: { query: string; resultCount: number; truncated: boolean; offset: number };
-  }>;
-}
+type ToolParams = Static<typeof PARAMETERS>;
+type SearchDetails = { query: string; resultCount: number; truncated: boolean; offset: number };
 
 /**
  * Create the web_search tool definition for pi.
  */
-export function createWebSearchTool(): WebSearchToolDefinition {
-  return {
+export function createWebSearchTool(): ToolDefinition<typeof PARAMETERS, SearchDetails> {
+  return defineTool({
     name: "web_search",
     label: "Web Search",
     description: DESCRIPTION,
@@ -69,9 +59,9 @@ export function createWebSearchTool(): WebSearchToolDefinition {
       _toolCallId: string,
       params: ToolParams,
       signal: AbortSignal | undefined,
-      _onUpdate: unknown,
-      _ctx: unknown,
-    ) {
+      _onUpdate: AgentToolUpdateCallback<SearchDetails> | undefined,
+      _ctx: ExtensionContext,
+    ): Promise<AgentToolResult<SearchDetails>> {
       const { q, results = 10, start = 0 } = params;
       const cache = new PageCache(fetchSerperPage, q);
       const slice = await cache.getSlice(start, results, signal);
@@ -87,5 +77,5 @@ export function createWebSearchTool(): WebSearchToolDefinition {
         },
       };
     },
-  };
+  });
 }

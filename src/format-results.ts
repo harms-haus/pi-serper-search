@@ -1,13 +1,21 @@
 import type { SearchResult } from "./pagination.js";
 
+/** @internal */
 export const MAX_OUTPUT_BYTES = 50 * 1024;
+
+/** @internal */
 export const MAX_OUTPUT_LINES = 2000;
+
+const MARKDOWN_SPECIAL = /([*[\]_#|`~])/g;
 
 /**
  * Escape markdown special characters in a string to prevent formatting corruption.
+ *
+ * `lastIndex` reset is not needed: `String.prototype.replace` always searches
+ * from the beginning of the string regardless of `lastIndex`.
  */
 function escapeMarkdown(text: string): string {
-  return text.replace(/([*[\]_#|`~])/g, "\\$1");
+  return text.replace(MARKDOWN_SPECIAL, "\\$1");
 }
 
 /**
@@ -58,7 +66,7 @@ export function formatResults(
   let text = lines.join("\n");
 
   if (truncated) {
-    text += "\n\n[Results truncated at 50KB/2000 lines]";
+    text += `\n\n[Results truncated at ${String(MAX_OUTPUT_BYTES / 1024)}KB/${String(MAX_OUTPUT_LINES)} lines]`;
   }
 
   return { text, truncated };

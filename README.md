@@ -20,6 +20,13 @@ Search the web using Google and return a numbered list of results.
 - "Show me 5 results about React Server Components" → `web_search({ q: "React Server Components", results: 5 })`
 - "Get the next 10 results" → `web_search({ q: "React Server Components", results: 10, start: 10 })`
 
+## Behavior
+
+- **Timeout:** Requests to the Serper API time out after 30 seconds. If the caller provides an `AbortSignal`, both the caller's signal and the 30-second timeout are respected.
+- **Retry:** On HTTP 429 (rate limit) or 503 (service unavailable), the extension automatically retries once after a short delay (1–2 seconds with jitter, or the `Retry-After` header value if provided).
+- **Output truncation:** Results are truncated at 50KB or 2000 lines, whichever is hit first. A footer message indicates when truncation occurs.
+- **Caching:** Within a single tool call, fetched pages are cached so requesting overlapping ranges does not trigger duplicate API calls.
+
 ## Install
 
 ### Option 1: pi install (Recommended)
@@ -70,7 +77,8 @@ src/
 ├── web-search-tool.ts    # Tool definition and execute handler
 ├── serper-client.ts      # Serper API client (fetch + error handling)
 ├── pagination.ts         # PageCache: virtual offset → page mapping
-└── format-results.ts     # Markdown formatting + truncation
+├── format-results.ts     # Markdown formatting + truncation
+└── constants.ts          # Shared constants (results per page)
 ```
 
 **Zero runtime dependencies.** Only pi peer packages are needed.

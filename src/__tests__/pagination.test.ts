@@ -4,9 +4,9 @@ import type { SerperOrganicResult } from "../serper-client.js";
 
 const makePageResults = (page: number): SerperOrganicResult[] =>
   Array.from({ length: 10 }, (_, i) => ({
-    title: `Page${page} Result${i}`,
-    link: `https://example.com/p${page}/${i}`,
-    snippet: `Snippet p${page}-${i}`,
+    title: `Page${String(page)} Result${String(i)}`,
+    link: `https://example.com/p${String(page)}/${String(i)}`,
+    snippet: `Snippet p${String(page)}-${String(i)}`,
   }));
 
 describe("PageCache.getSlice", () => {
@@ -38,9 +38,9 @@ describe("PageCache.getSlice", () => {
     expect(results).toHaveLength(5);
     for (let i = 0; i < 5; i++) {
       expect(results[i]).toEqual({
-        title: `Page1 Result${i}`,
-        url: `https://example.com/p1/${i}`,
-        snippet: `Snippet p1-${i}`,
+        title: `Page1 Result${String(i)}`,
+        url: `https://example.com/p1/${String(i)}`,
+        snippet: `Snippet p1-${String(i)}`,
       });
     }
   });
@@ -129,6 +129,97 @@ describe("PageCache.getSlice", () => {
     expect(fetchPage).toHaveBeenCalledWith("test query", 1, signal);
   });
 
+  it("clamps negative start to 0", async () => {
+    const results = await cache.getSlice(-5, 3);
+
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+    expect(fetchPage).toHaveBeenCalledWith("test query", 1, undefined);
+
+    expect(results).toHaveLength(3);
+    for (let i = 0; i < 3; i++) {
+      expect(results[i]).toEqual({
+        title: `Page1 Result${String(i)}`,
+        url: `https://example.com/p1/${String(i)}`,
+        snippet: `Snippet p1-${String(i)}`,
+      });
+    }
+  });
+
+  it("returns at least 1 result when count is 0", async () => {
+    const results = await cache.getSlice(0, 0);
+
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+    expect(fetchPage).toHaveBeenCalledWith("test query", 1, undefined);
+
+    // safeCount = Math.max(1, 0) = 1
+    expect(results).toHaveLength(1);
+    expect(results[0]).toEqual({
+      title: "Page1 Result0",
+      url: "https://example.com/p1/0",
+      snippet: "Snippet p1-0",
+    });
+  });
+
+  it("handles a partial last page with fewer than RESULTS_PER_PAGE results", async () => {
+    // Page 1 returns 10 results (default mock), page 2 returns only 3
+    (fetchPage as ReturnType<typeof vi.fn>).mockImplementation((_query: string, page: number) => {
+      if (page === 2) {
+        return Promise.resolve(makePageResults(2).slice(0, 3));
+      }
+      return Promise.resolve(makePageResults(page));
+    });
+
+    const results = await cache.getSlice(0, 20);
+
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+    expect(fetchPage).toHaveBeenCalledWith("test query", 1, undefined);
+    expect(fetchPage).toHaveBeenCalledWith("test query", 2, undefined);
+
+    // 10 from page 1 + 3 from page 2 = 13
+    expect(results).toHaveLength(13);
+    // Last 3 should be from the partial page 2
+    for (let i = 0; i < 3; i++) {
+      expect(results[10 + i]).toEqual({
+        title: `Page2 Result${String(i)}`,
+        url: `https://example.com/p2/${String(i)}`,
+        snippet: `Snippet p2-${String(i)}`,
+      });
+    }
+  });
+
+  it("propagates fetchPage rejection", async () => {
+    (fetchPage as ReturnType<typeof vi.fn>).mockImplementation((_query: string, page: number) => {
+      if (page === 2) {
+        return Promise.reject(new Error("API error page 2"));
+      }
+      return Promise.resolve(makePageResults(page));
+    });
+
+    await expect(cache.getSlice(0, 20)).rejects.toThrow("API error page 2");
+  });
+
+  it("resolves concurrent getSlice calls correctly", async () => {
+    const [sliceA, sliceB] = await Promise.all([cache.getSlice(0, 5), cache.getSlice(10, 5)]);
+
+    expect(sliceA).toHaveLength(5);
+    for (let i = 0; i < 5; i++) {
+      expect(sliceA[i]).toEqual({
+        title: `Page1 Result${String(i)}`,
+        url: `https://example.com/p1/${String(i)}`,
+        snippet: `Snippet p1-${String(i)}`,
+      });
+    }
+
+    expect(sliceB).toHaveLength(5);
+    for (let i = 0; i < 5; i++) {
+      expect(sliceB[i]).toEqual({
+        title: `Page2 Result${String(i)}`,
+        url: `https://example.com/p2/${String(i)}`,
+        snippet: `Snippet p2-${String(i)}`,
+      });
+    }
+  });
+
   it("fetches all 5 pages for a large request spanning 50 results", async () => {
     const results = await cache.getSlice(0, 50);
 
@@ -143,9 +234,9 @@ describe("PageCache.getSlice", () => {
       for (let i = 0; i < 10; i++) {
         const idx = p * 10 + i;
         expect(results[idx]).toEqual({
-          title: `Page${p + 1} Result${i}`,
-          url: `https://example.com/p${p + 1}/${i}`,
-          snippet: `Snippet p${p + 1}-${i}`,
+          title: `Page${String(p + 1)} Result${String(i)}`,
+          url: `https://example.com/p${String(p + 1)}/${String(i)}`,
+          snippet: `Snippet p${String(p + 1)}-${String(i)}`,
         });
       }
     }

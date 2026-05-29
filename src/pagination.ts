@@ -1,12 +1,11 @@
 import type { SerperOrganicResult } from "./serper-client.js";
+import { RESULTS_PER_PAGE } from "./constants.js";
 
 export interface SearchResult {
   title: string;
   url: string;
   snippet: string;
 }
-
-const RESULTS_PER_PAGE = 10;
 
 function normalizeResult(r: SerperOrganicResult): SearchResult {
   return { title: r.title, url: r.link, snippet: r.snippet };

@@ -155,6 +155,18 @@ describe("fetchSerperPage", () => {
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
 
+  it("rejects immediately when signal is already aborted during retry", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("rate limited", { status: 429 }));
+
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(fetchSerperPage("test", 1, controller.signal)).rejects.toThrow();
+  });
+
   it("throws when retry also fails with 503", async () => {
     vi.useFakeTimers();
     vi.spyOn(Math, "random").mockReturnValue(0);
